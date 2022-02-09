@@ -1,0 +1,104 @@
+Install Docker Engine on Ubuntu
+(https://docs.docker.com/engine/install/ubuntu/#set-up-the-repository)
+
+# Set up the repository
+
+ sudo apt-get update
+ sudo apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+# Add Docker’s official GPG key
+ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# set up the stable repository
+ echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+#Install Docker Engine
+ sudo apt-get update
+ sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+#확인
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo docker version
+
+---------------------------------
+
+
+Installing kubeadm
+
+# Swap disabled
+swapoff -a && sed -i '/swap/s/^/#/' /etc/fstab
+
+# Letting iptables see bridged traffic
+cat <<EOF |  tee /etc/modules-load.d/k8s.conf
+br_netfilter
+EOF
+
+cat <<EOF |  tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+
+# Disable firewall
+systemctl stop firewalld 
+systemctl disable firewalld
+
+# Installing runtime
+# docker 설치완료 동작중.
+
+# Installing kubeadm, kubelet and kubectl
+apt-get update
+apt-get install -y apt-transport-https ca-certificates curl
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+apt-get update
+apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
+
+#설치확인
+systemctl start kubelet
+systemctl enable kubelet
+
+
+# Configuring a cgroup driver
+sudo mkdir /etc/docker
+cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+
+sudo systemctl enable docker
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+**쿠버네티스 클러스터 재구성(초기화)
+kubeadm reset cleanup-node 후 kubeadm init
+
+**BASH Auto Completion
+source <(kubectl completion bash)
+echo "source <(kubectl completion bash)" >> ~/.bashrc
+
+source <(kubeadm completion bash)
+echo "source <(kubeadm completion bash)" >> ~/.bashrc
+
+
+
+@오류 해결을 위해 참고한 곳.
+"kubeadm init"
+[error execution phase preflight: [preflight] Some fatal errors occurred:]
+=>
+https://it-hangil.tistory.com/59
+
